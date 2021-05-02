@@ -1,0 +1,58 @@
+{
+    "variables": {
+        "client_id": "{{env `ARM_CLIENT_ID`}}",
+        "client_secret": "{{env `ARM_CLIENT_SECRET`}}",
+        "subscription_id": "{{env `ARM_SUBSCRIPTION_ID`}}",
+        "tenant_id": "{{env `ARM_TENANT_ID`}}",
+        "object_id": "{{env `ARM_OBJECT_ID`}}",
+        "location": "{{env `ARM_RESOURCE_LOCATION`}}",
+        "managed_image_resource_group_name": "{{env `ARM_IMAGE_RESOURCE_GROUP_NAME`}}",
+        "managed_image_name": "{{env `ARM_IMAGE_NAME`}}"
+    },
+    "builders": [{
+        "type": "azure-arm",
+
+        "client_id": "{{user `client_id`}}",
+        "client_secret": "{{user `client_secret`}}",
+        "subscription_id": "{{user `subscription_id`}}",
+        "object_id": "{{user `object_id`}}",
+        "tenant_id": "{{user `tenant_id`}}",
+
+        "location": "{{user `location`}}",
+        "managed_image_resource_group_name": "{{user  `managed_image_resource_group_name`}}",
+        "managed_image_name": "{{user `managed_image_name`}}",
+
+        "vm_size": "Standard_B4ms",
+        "os_type": "Windows",
+        "image_publisher": "MicrosoftWindowsServer",
+        "image_offer": "WindowsServer",
+        "image_sku": "2019-Datacenter",
+
+        "communicator": "winrm",
+        "winrm_use_ssl": "true",
+        "winrm_insecure": "true",
+        "winrm_timeout": "5m",
+        "winrm_username": "packer"
+    }],
+    "provisioners": [{
+        "type": "powershell",
+        "inline": [
+            "Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))",
+            "Start-Sleep -s 5",
+            "choco install nodejs azure-cli --yes"
+        ]
+    },
+    {
+        "type": "windows-restart"   
+    },
+    {
+        "type": "powershell",
+        "pause_before": "2m",
+        "inline": [
+            "while ((Get-Service RdAgent).Status -ne 'Running') { Start-Sleep -s 5 }",
+            "while ((Get-Service WindowsAzureGuestAgent).Status -ne 'Running') { Start-Sleep -s 5 }",
+            "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /quit",
+            "while($true) { $imageState = Get-ItemProperty HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Setup\\State | Select ImageState; if($imageState.ImageState -ne 'IMAGE_STATE_GENERALIZE_RESEAL_TO_OOBE') { Write-Output $imageState.ImageState; Start-Sleep -s 10  } else { break } }"
+        ]
+    }]
+}

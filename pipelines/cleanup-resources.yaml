@@ -1,0 +1,13 @@
+trigger: none
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: AzurePowerShell@2
+  displayName: 'Cleanup Azure Resources'
+  inputs:
+    azureSubscription: 'Azure'
+    ScriptType: 'FilePath'
+    ScriptPath: 'scripts\cleanup-resources.ps1'
+    ScriptArguments: '-ManagedImageName "$(ManagedImageName)" -ManagedImageResourceGroupName "$(ManagedImageResourceGroupName)" -AgentPoolResourceGroup "$(AgentPoolResourceGroup)"'
+    azurePowerShellVersion: 'LatestVersion'  
